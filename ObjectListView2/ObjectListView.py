@@ -2731,8 +2731,14 @@ class GroupListView(FastObjectListView):
             own column at position 0. If this is false, the expand/contract icon will be
             in the first user specified column. This must be set before SetColumns() is called.
             If it is changed, SetColumns() must be called again.
+
+        * listGroupClass
+
+            If this is set, then the value will be used to create ListGroups. This allows 
+            overriding the ListGroup()-class and allows for custom titles to the group columns. 
         """
         self.groups = list()
+        self.ListGroup = kwargs.pop("listGroupClass", ListGroup)
         self.showGroups = True
         self.putBlankLineBetweenGroups = True
         self.alwaysGroupByColumnIndex = -1
@@ -2975,7 +2981,7 @@ class GroupListView(FastObjectListView):
             key = groupingColumn.GetGroupKey(model)
             group = groupMap.get(key)
             if group is None:
-                groupMap[key] = group = ListGroup(
+                groupMap[key] = group = self.ListGroup(
                     key,
                     groupingColumn.GetGroupKeyAsString(key))
             group.Add(model)
@@ -3039,11 +3045,11 @@ class GroupListView(FastObjectListView):
         if modelObject is None:
             return ""
 
-        if isinstance(modelObject, ListGroup):
+        if isinstance(modelObject, self.ListGroup):
             if self.GetPrimaryColumnIndex() == colIdx:
                 return modelObject.title
             else:
-                return ""
+                return modelObject.ColumnHeader(colIdx)
 
         return self.GetStringValueAt(modelObject, colIdx)
 
@@ -3057,7 +3063,7 @@ class GroupListView(FastObjectListView):
         if modelObject is None:
             return -1
 
-        if isinstance(modelObject, ListGroup):
+        if isinstance(modelObject, self.ListGroup):
             if modelObject.isExpanded:
                 imageKey = ObjectListView.NAME_EXPANDED_IMAGE
             else:
@@ -3075,7 +3081,7 @@ class GroupListView(FastObjectListView):
         if modelObject is None:
             return -1
 
-        if isinstance(modelObject, ListGroup):
+        if isinstance(modelObject, self.ListGroup):
             if colIdx == 0:
                 if modelObject.isExpanded:
                     imageKey = ObjectListView.NAME_EXPANDED_IMAGE
@@ -3098,7 +3104,7 @@ class GroupListView(FastObjectListView):
         if modelObject is None:
             return self.listItemAttr
 
-        if isinstance(modelObject, ListGroup):
+        if isinstance(modelObject, self.ListGroup):
             # We have to keep a reference to the ListItemAttr or the garbage collector
             # will clear it up immeditately, before the ListCtrl has time to
             # process it.
@@ -3209,7 +3215,7 @@ class GroupListView(FastObjectListView):
         self.SetItemState(-1, wx.LIST_STATE_SELECTED, wx.LIST_STATE_SELECTED)
 
         for (i, x) in enumerate(self.innerList):
-            if x is None or isinstance(x, ListGroup):
+            if x is None or isinstance(x, self.ListGroup):
                 self.SetItemState(i, 0, wx.LIST_STATE_SELECTED)
 
     # With the current implemetation, these are synonyms
@@ -3237,7 +3243,7 @@ class GroupListView(FastObjectListView):
         i = self.GetNextItem(-1, wx.LIST_NEXT_ALL, wx.LIST_STATE_SELECTED)
         while i != -1:
             model = self.innerList[i]
-            if isinstance(model, ListGroup):
+            if isinstance(model, self.ListGroup):
                 selectedGroups.append(model)
             i = self.GetNextItem(i, wx.LIST_NEXT_ALL, wx.LIST_STATE_SELECTED)
         return selectedGroups
@@ -3261,7 +3267,7 @@ class GroupListView(FastObjectListView):
         """
         try:
             model = self.innerList[index]
-            if isinstance(model, ListGroup):
+            if isinstance(model, self.ListGroup):
                 model = None
         except IndexError:
             model = None
@@ -3298,7 +3304,7 @@ class GroupListView(FastObjectListView):
         objects = [
             x for x in objects if x is not None and not isinstance(
                 x,
-                ListGroup)]
+                self.ListGroup)]
         return [[column.GetStringValue(x) for column in cols] for x in objects]
 
     #-------------------------------------------------------------------------
@@ -3334,7 +3340,7 @@ class GroupListView(FastObjectListView):
         self._PossibleFinishCellEdit()
 
         listObject = self.innerList[rowIndex]
-        if subItemIndex == 0 and isinstance(listObject, ListGroup):
+        if subItemIndex == 0 and isinstance(listObject, self.ListGroup):
             self.ToggleExpansion(listObject)
         else:
             FastObjectListView._HandleLeftDownOnImage(
@@ -3431,6 +3437,8 @@ class ListGroup(object):
         """
         self.modelObjects.append(model)
 
+    def ColumnHeader(self, idx):
+        return ""
 
 #######################################################################
 
